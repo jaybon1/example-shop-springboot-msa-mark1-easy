@@ -1,0 +1,298 @@
+package com.example.shop.order.presentation.controller;
+
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper;
+import com.epages.restdocs.apispec.ResourceDocumentation;
+import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.epages.restdocs.apispec.SimpleType;
+import com.example.shop.order.application.service.OrderServiceV1;
+import com.example.shop.order.domain.model.Order;
+import com.example.shop.order.infrastructure.security.auth.CustomUserDetails;
+import com.example.shop.order.presentation.dto.request.ReqPostOrdersDtoV1;
+import com.example.shop.order.presentation.dto.response.ResGetOrderDtoV1;
+import com.example.shop.order.presentation.dto.response.ResGetOrdersDtoV1;
+import com.example.shop.order.presentation.dto.response.ResPostOrdersDtoV1;
+import com.example.shop.order.infrastructure.security.jwt.JwtProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
+import org.springframework.restdocs.operation.preprocess.Preprocessors;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+@WebMvcTest(value = OrderControllerV1.class, properties = {
+        "spring.cloud.config.enabled=false",
+        "spring.cloud.discovery.enabled=false",
+        "eureka.client.enabled=false",
+        "spring.config.import=optional:classpath:/"
+})
+@AutoConfigureRestDocs
+@AutoConfigureMockMvc(addFilters = false)
+@Import(OrderControllerV1Test.JwtTestConfig.class)
+class OrderControllerV1Test {
+
+    private static final String TEST_ACCESS_JWT =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30";
+    private static final String DUMMY_BEARER_TOKEN = "Bearer " + TEST_ACCESS_JWT;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private OrderServiceV1 orderServiceV1;
+
+    private static final CustomUserDetails TEST_USER_DETAILS = CustomUserDetails.builder()
+            .id(UUID.fromString("11111111-1111-1111-1111-111111111111"))
+            .username("test-user")
+            .nickname("tester")
+            .email("tester@example.com")
+            .accessJwt(TEST_ACCESS_JWT)
+            .roleList(List.of("USER"))
+            .build();
+
+    @BeforeEach
+    void setUpSecurityContext() {
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                TEST_USER_DETAILS,
+                null,
+                TEST_USER_DETAILS.getAuthorities()
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @TestConfiguration
+    static class JwtTestConfig {
+        @Bean
+        JwtProperties jwtProperties() {
+            return new JwtProperties("Authorization", "Bearer ", "access-token");
+        }
+    }
+
+    @Test
+    @DisplayName("주문 목록 조회 시 두 건의 더미 주문을 반환한다")
+    void getOrders_returnsDummyOrders() throws Exception {
+        ResGetOrdersDtoV1 response = ResGetOrdersDtoV1.builder()
+                .orderPage(new ResGetOrdersDtoV1.OrderPageDto(
+                        ResGetOrdersDtoV1.OrderPageDto.OrderDto.builder()
+                                .id(UUID.randomUUID().toString())
+                                .status(Order.Status.CREATED)
+                                .totalAmount(10_000L)
+                                .createdAt(Instant.now())
+                                .build(),
+                        ResGetOrdersDtoV1.OrderPageDto.OrderDto.builder()
+                                .id(UUID.randomUUID().toString())
+                                .status(Order.Status.PAID)
+                                .totalAmount(20_000L)
+                                .createdAt(Instant.now())
+                                .build()
+                ))
+                .build();
+        given(orderServiceV1.getOrders(any(), anyList(), any())).willReturn(response);
+
+        mockMvc.perform(
+                        RestDocumentationRequestBuilders.get("/v1/orders")
+                                .with(user(TEST_USER_DETAILS))
+                                .header(HttpHeaders.AUTHORIZATION, DUMMY_BEARER_TOKEN)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderPage.content", hasSize(2)))
+                .andExpect(jsonPath("$.data.orderPage.content[0].status", equalTo("CREATED")))
+                .andDo(
+                        MockMvcRestDocumentationWrapper.document(
+                                "order-get-orders",
+                                Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                                Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                                ResourceDocumentation.resource(
+                                        ResourceSnippetParameters.builder()
+                                                .tag("Order V1")
+                                                .summary("주문 목록 조회")
+                                                .description("등록된 주문 목록을 조회합니다.")
+                                                .build()
+                                )
+                        )
+                );
+    }
+
+    @Test
+    @DisplayName("주문 단건 조회 시 주문 ID 가 응답에 포함된다")
+    void getOrder_returnsRequestedId() throws Exception {
+        UUID orderId = UUID.fromString("aaaaaaaa-0000-0000-0000-aaaaaaaa0000");
+
+        ResGetOrderDtoV1 response = ResGetOrderDtoV1.builder()
+                .order(
+                        ResGetOrderDtoV1.OrderDto.builder()
+                                .id(orderId.toString())
+                                .orderItemList(List.of(
+                                        ResGetOrderDtoV1.OrderItemDto.builder()
+                                                .id(UUID.randomUUID().toString())
+                                                .productId(UUID.randomUUID().toString())
+                                                .productName("샘플 상품 A")
+                                                .unitPrice(10_000L)
+                                                .quantity(1L)
+                                                .lineTotal(10_000L)
+                                                .build(),
+                                        ResGetOrderDtoV1.OrderItemDto.builder()
+                                                .id(UUID.randomUUID().toString())
+                                                .productId(UUID.randomUUID().toString())
+                                                .productName("샘플 상품 B")
+                                                .unitPrice(20_000L)
+                                                .quantity(1L)
+                                                .lineTotal(20_000L)
+                                                .build()
+                                ))
+                                .build()
+                )
+                .build();
+        given(orderServiceV1.getOrder(any(), anyList(), eq(orderId))).willReturn(response);
+
+        mockMvc.perform(
+                        RestDocumentationRequestBuilders.get("/v1/orders/{id}", orderId)
+                                .with(user(TEST_USER_DETAILS))
+                                .header(HttpHeaders.AUTHORIZATION, DUMMY_BEARER_TOKEN)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.order.id", equalTo(orderId.toString())))
+                .andExpect(jsonPath("$.data.order.orderItemList", hasSize(2)))
+                .andDo(
+                        MockMvcRestDocumentationWrapper.document(
+                                "order-get-order",
+                                Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                                Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                                ResourceDocumentation.resource(
+                                        ResourceSnippetParameters.builder()
+                                                .tag("Order V1")
+                                                .summary("주문 단건 조회")
+                                                .description("지정한 주문 ID로 단일 주문을 조회합니다.")
+                                                .pathParameters(
+                                                        ResourceDocumentation.parameterWithName("id")
+                                                                .type(SimpleType.STRING)
+                                                                .description("조회할 주문 ID")
+                                                )
+                                                .build()
+                                )
+                        )
+                );
+    }
+
+    @Test
+    @DisplayName("주문 생성 요청 시 더미 주문 정보와 메시지를 반환한다")
+    void createOrder_returnsDummyOrder() throws Exception {
+        ReqPostOrdersDtoV1 request = ReqPostOrdersDtoV1.builder()
+                .order(
+                        ReqPostOrdersDtoV1.OrderDto.builder()
+                                .orderItemList(List.of(
+                                        ReqPostOrdersDtoV1.OrderDto.OrderItemDto.builder()
+                                                .productId(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+                                                .quantity(1L)
+                                                .build()
+                                ))
+                                .build()
+                )
+                .build();
+
+        String savedOrderId = UUID.randomUUID().toString();
+        ResPostOrdersDtoV1 response = ResPostOrdersDtoV1.builder()
+                .order(
+                        ResPostOrdersDtoV1.OrderDto.builder()
+                                .id(savedOrderId)
+                                .build()
+                )
+                .build();
+        given(orderServiceV1.postOrders(any(), eq(TEST_ACCESS_JWT), any(ReqPostOrdersDtoV1.class))).willReturn(response);
+
+        mockMvc.perform(
+                        RestDocumentationRequestBuilders.post("/v1/orders")
+                                .with(user(TEST_USER_DETAILS))
+                                .header(HttpHeaders.AUTHORIZATION, DUMMY_BEARER_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", equalTo("주문이 생성되었습니다.")))
+                .andExpect(jsonPath("$.data.order.id", equalTo(savedOrderId)))
+                .andDo(
+                        MockMvcRestDocumentationWrapper.document(
+                                "order-create-order",
+                                Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                                Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                                ResourceDocumentation.resource(
+                                        ResourceSnippetParameters.builder()
+                                                .tag("Order V1")
+                                                .summary("주문 생성")
+                                                .description("새로운 주문을 생성합니다.")
+                                                .build()
+                                )
+                        )
+                );
+    }
+
+    @Test
+    @DisplayName("주문 취소 요청 시 성공 메시지를 반환한다")
+    void postOrder_Cancel_returnsSuccessMessage() throws Exception {
+        UUID orderId = UUID.fromString("bbbbbbbb-0000-0000-0000-bbbbbbbb0000");
+
+        willDoNothing().given(orderServiceV1).postOrderCancel(any(), anyList(), eq(TEST_ACCESS_JWT), eq(orderId));
+
+        mockMvc.perform(
+                        RestDocumentationRequestBuilders.post("/v1/orders/{id}/cancel", orderId)
+                                .with(user(TEST_USER_DETAILS))
+                                .header(HttpHeaders.AUTHORIZATION, DUMMY_BEARER_TOKEN)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", equalTo(orderId + " 주문이 취소되었습니다.")))
+                .andDo(
+                        MockMvcRestDocumentationWrapper.document(
+                                "order-cancel-order",
+                                Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                                Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                                ResourceDocumentation.resource(
+                                        ResourceSnippetParameters.builder()
+                                                .tag("Order V1")
+                                                .summary("주문 취소")
+                                                .description("지정한 주문 ID로 주문을 취소합니다.")
+                                                .pathParameters(
+                                                        ResourceDocumentation.parameterWithName("id")
+                                                                .type(SimpleType.STRING)
+                                                                .description("취소할 주문 ID")
+                                                )
+                                                .build()
+                                )
+                        )
+                );
+    }
+}
