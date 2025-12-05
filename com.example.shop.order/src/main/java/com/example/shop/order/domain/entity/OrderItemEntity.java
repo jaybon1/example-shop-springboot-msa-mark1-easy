@@ -1,4 +1,4 @@
-package com.example.shop.order.infrastructure.jpa.entity;
+package com.example.shop.order.domain.entity;
 
 import com.example.shop.global.infrastructure.persistence.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -27,8 +27,8 @@ import org.hibernate.annotations.DynamicUpdate;
 @DynamicUpdate
 @Getter
 @Builder
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(of = "id", callSuper = false)
 public class OrderItemEntity extends BaseEntity {
 
@@ -73,9 +73,5 @@ public class OrderItemEntity extends BaseEntity {
         if (lineTotal != null) {
             this.lineTotal = lineTotal;
         }
-    }
-
-    public void detachOrder() {
-        this.order = null;
     }
 }

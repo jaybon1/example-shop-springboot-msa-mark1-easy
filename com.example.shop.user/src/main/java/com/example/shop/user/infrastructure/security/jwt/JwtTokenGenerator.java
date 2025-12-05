@@ -2,7 +2,7 @@ package com.example.shop.user.infrastructure.security.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.example.shop.user.domain.model.User;
+import com.example.shop.user.domain.entity.UserEntity;
 import com.example.shop.user.infrastructure.security.auth.CustomUserDetails;
 import java.time.Instant;
 import java.util.List;
@@ -18,22 +18,22 @@ public class JwtTokenGenerator {
         this.jwtProperties = jwtProperties;
     }
 
-    public String generateAccessToken(User user) {
-        Objects.requireNonNull(user, "user must not be null");
+    public String generateAccessToken(UserEntity userEntity) {
+        Objects.requireNonNull(userEntity, "user must not be null");
         return createAccessToken(
-                String.valueOf(user.getId()),
-                user.getUsername(),
-                user.getNickname(),
-                user.getEmail(),
-                user.getUserRoleList().stream()
-                        .map(role -> role.getRole().name())
+                String.valueOf(userEntity.getId()),
+                userEntity.getUsername(),
+                userEntity.getNickname(),
+                userEntity.getEmail(),
+                userEntity.getUserRoleList().stream()
+                        .map(roleEntity -> roleEntity.getRole().name())
                         .toList()
         );
     }
 
-    public String generateRefreshToken(User user) {
-        Objects.requireNonNull(user, "user must not be null");
-        return createRefreshToken(String.valueOf(user.getId()));
+    public String generateRefreshToken(UserEntity userEntity) {
+        Objects.requireNonNull(userEntity, "user must not be null");
+        return createRefreshToken(String.valueOf(userEntity.getId()));
     }
 
     public String generateAccessToken(CustomUserDetails userDetails) {

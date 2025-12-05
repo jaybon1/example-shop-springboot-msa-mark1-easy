@@ -1,9 +1,10 @@
 package com.example.shop.order.presentation.dto.response;
 
-import com.example.shop.order.domain.model.Order;
-import com.example.shop.order.domain.model.Order.Status;
-import com.example.shop.order.domain.model.OrderItem;
-import com.example.shop.order.domain.vo.OrderPayment;
+import com.example.shop.order.domain.entity.OrderEntity;
+import com.example.shop.order.domain.entity.OrderEntity.Status;
+import com.example.shop.order.domain.entity.OrderEntity.OrderPaymentMethod;
+import com.example.shop.order.domain.entity.OrderEntity.OrderPaymentStatus;
+import com.example.shop.order.domain.entity.OrderItemEntity;
 import java.time.Instant;
 import java.util.List;
 import lombok.Builder;
@@ -15,9 +16,9 @@ public class ResGetOrderDtoV1 {
 
     private final OrderDto order;
 
-    public static ResGetOrderDtoV1 of(Order order) {
+    public static ResGetOrderDtoV1 of(OrderEntity orderEntity) {
         return ResGetOrderDtoV1.builder()
-                .order(OrderDto.from(order))
+                .order(OrderDto.from(orderEntity))
                 .build();
     }
 
@@ -33,15 +34,15 @@ public class ResGetOrderDtoV1 {
         private final List<OrderItemDto> orderItemList;
         private final PaymentDto payment;
 
-        public static OrderDto from(Order order) {
+        public static OrderDto from(OrderEntity orderEntity) {
             return OrderDto.builder()
-                    .id(String.valueOf(order.getId()))
-                    .status(order.getStatus())
-                    .totalAmount(order.getTotalAmount())
-                    .createdAt(order.getCreatedAt())
-                    .updatedAt(order.getUpdatedAt())
-                    .orderItemList(OrderItemDto.from(order.getOrderItemList()))
-                    .payment(PaymentDto.from(order.getPayment()))
+                    .id(String.valueOf(orderEntity.getId()))
+                    .status(orderEntity.getStatus())
+                    .totalAmount(orderEntity.getTotalAmount())
+                    .createdAt(orderEntity.getCreatedAt())
+                    .updatedAt(orderEntity.getUpdatedAt())
+                    .orderItemList(OrderItemDto.from(orderEntity.getOrderItemList()))
+                    .payment(PaymentDto.from(orderEntity))
                     .build();
         }
     }
@@ -57,23 +58,23 @@ public class ResGetOrderDtoV1 {
         private final Long quantity;
         private final Long lineTotal;
 
-        private static List<OrderItemDto> from(List<OrderItem> orderItemList) {
-            return orderItemList.stream()
+        private static List<OrderItemDto> from(List<OrderItemEntity> orderItemEntityList) {
+            return orderItemEntityList.stream()
                     .map(OrderItemDto::from)
                     .toList();
         }
 
-        public static OrderItemDto from(OrderItem orderItem) {
-            if (orderItem == null) {
+        public static OrderItemDto from(OrderItemEntity orderItemEntity) {
+            if (orderItemEntity == null) {
                 return null;
             }
             return OrderItemDto.builder()
-                    .id(String.valueOf(orderItem.getId()))
-                    .productId(String.valueOf(orderItem.getProductId()))
-                    .productName(orderItem.getProductName())
-                    .unitPrice(orderItem.getUnitPrice())
-                    .quantity(orderItem.getQuantity())
-                    .lineTotal(orderItem.getLineTotal())
+                    .id(String.valueOf(orderItemEntity.getId()))
+                    .productId(String.valueOf(orderItemEntity.getProductId()))
+                    .productName(orderItemEntity.getProductName())
+                    .unitPrice(orderItemEntity.getUnitPrice())
+                    .quantity(orderItemEntity.getQuantity())
+                    .lineTotal(orderItemEntity.getLineTotal())
                     .build();
         }
     }
@@ -83,19 +84,19 @@ public class ResGetOrderDtoV1 {
     public static class PaymentDto {
 
         private final String id;
-        private final OrderPayment.Status status;
-        private final OrderPayment.Method method;
+        private final OrderPaymentStatus status;
+        private final OrderPaymentMethod method;
         private final Long amount;
 
-        public static PaymentDto from(OrderPayment payment) {
-            if (payment == null) {
+        public static PaymentDto from(OrderEntity orderEntity) {
+            if (orderEntity == null || orderEntity.getPaymentId() == null) {
                 return null;
             }
             return PaymentDto.builder()
-                    .id(String.valueOf(payment.getId()))
-                    .status(payment.getStatus())
-                    .method(payment.getMethod())
-                    .amount(payment.getAmount())
+                    .id(String.valueOf(orderEntity.getPaymentId()))
+                    .status(orderEntity.getPaymentStatus())
+                    .method(orderEntity.getPaymentMethod())
+                    .amount(orderEntity.getPaymentAmount())
                     .build();
         }
     }

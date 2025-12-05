@@ -13,7 +13,7 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.SimpleType;
 import com.example.shop.payment.application.service.PaymentServiceV1;
-import com.example.shop.payment.domain.model.Payment;
+import com.example.shop.payment.domain.entity.PaymentEntity;
 import com.example.shop.payment.infrastructure.security.auth.CustomUserDetails;
 import com.example.shop.payment.infrastructure.security.jwt.JwtProperties;
 import com.example.shop.payment.presentation.dto.request.ReqPostPaymentsDtoV1;
@@ -150,11 +150,11 @@ class PaymentControllerV1Test {
     void postPayments_returnsCreatedPayment() throws Exception {
         ReqPostPaymentsDtoV1 request = ReqPostPaymentsDtoV1.builder()
                 .payment(
-                        ReqPostPaymentsDtoV1.PaymentDto.builder()
-                                .orderId(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
-                                .method(Payment.Method.CARD)
-                                .amount(50_000L)
-                                .build()
+                                ReqPostPaymentsDtoV1.PaymentDto.builder()
+                                        .orderId(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
+                                        .method(PaymentEntity.Method.CARD)
+                                        .amount(50_000L)
+                                        .build()
                 )
                 .build();
 

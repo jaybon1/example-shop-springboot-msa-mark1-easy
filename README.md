@@ -3,6 +3,7 @@
 - Gradle / Spring Boot
 - MSA로 구성된 다중 서버
 - DDD기반 레이어드 아키텍쳐
+- entity, repository를 infrastructure 모듈에 분리하지 않고 domain 모듈에 포함
 - 이벤트 드리븐 없이 RestTemplate로 통신하여 처리하기
 - Jitpack을 통한 공통 모듈 관리
   - [https://github.com/jaybon1/example-shop-springboot-msa-global](https://github.com/jaybon1/example-shop-springboot-msa-global)

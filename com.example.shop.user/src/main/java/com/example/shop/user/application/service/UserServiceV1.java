@@ -1,8 +1,8 @@
 package com.example.shop.user.application.service;
 
 import com.example.shop.user.application.cache.AuthCache;
-import com.example.shop.user.domain.model.User;
-import com.example.shop.user.domain.model.UserRole;
+import com.example.shop.user.domain.entity.UserEntity;
+import com.example.shop.user.domain.entity.UserRoleEntity;
 import com.example.shop.user.domain.repository.UserRepository;
 import com.example.shop.user.presentation.advice.UserError;
 import com.example.shop.user.presentation.advice.UserException;
@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -44,41 +46,42 @@ public class UserServiceV1 {
         String normalizedNickname = normalize(nickname);
         String normalizedEmail = normalize(email);
 
-        Page<User> userPage = userRepository.searchUsers(normalizedUsername, normalizedNickname, normalizedEmail, pageable);
+        Pageable resolvedPageable = applyDefaultSort(pageable);
+        Page<UserEntity> userEntityPage = userRepository.searchUsers(normalizedUsername, normalizedNickname, normalizedEmail, resolvedPageable);
 
-        return ResGetUsersDtoV1.of(userPage);
+        return ResGetUsersDtoV1.of(userEntityPage);
     }
 
     public ResGetUserDtoV1 getUser(UUID authUserId, List<String> authUserRoleList, UUID userId) {
-        User user = getUserOrThrow(userId);
-        validateAccess(authUserId, authUserRoleList, user);
-        return ResGetUserDtoV1.of(user);
+        UserEntity userEntity = getUserOrThrow(userId);
+        validateAccess(authUserId, authUserRoleList, userEntity);
+        return ResGetUserDtoV1.of(userEntity);
     }
 
     @Transactional
     public void deleteUser(UUID authUserId, List<String> authUserRoleList, UUID userId) {
-        User user = getUserOrThrow(userId);
-        validateAccess(authUserId, authUserRoleList, user);
-        boolean targetIsAdmin = user.getUserRoleList().stream()
-                .map(UserRole::getRole)
-                .anyMatch(role -> role == UserRole.Role.ADMIN);
+        UserEntity userEntity = getUserOrThrow(userId);
+        validateAccess(authUserId, authUserRoleList, userEntity);
+        boolean targetIsAdmin = userEntity.getUserRoleList().stream()
+                .map(UserRoleEntity::getRole)
+                .anyMatch(role -> role == UserRoleEntity.Role.ADMIN);
         if (targetIsAdmin) {
             throw new UserException(UserError.USER_BAD_REQUEST);
         }
-        User deletedUser = user.markDeleted(Instant.now(), authUserId);
-        authCache.denyBy(String.valueOf(deletedUser.getId()), Instant.now().getEpochSecond());
-        userRepository.save(deletedUser);
+        userEntity.markDeleted(Instant.now(), authUserId);
+        authCache.denyBy(String.valueOf(userId), Instant.now().getEpochSecond());
+        userRepository.save(userEntity);
     }
 
-    private void validateAccess(UUID authUserId, List<String> authUserRoleList, User targetUser) {
-        boolean targetIsAdmin = targetUser.getUserRoleList().stream()
-                .map(UserRole::getRole)
-                .anyMatch(role -> role == UserRole.Role.ADMIN);
+    private void validateAccess(UUID authUserId, List<String> authUserRoleList, UserEntity targetUserEntity) {
+        boolean targetIsAdmin = targetUserEntity.getUserRoleList().stream()
+                .map(UserRoleEntity::getRole)
+                .anyMatch(role -> role == UserRoleEntity.Role.ADMIN);
         if (targetIsAdmin && !isAdmin(authUserRoleList)) {
             throw new UserException(UserError.USER_BAD_REQUEST);
         }
 
-        if ((authUserId != null && authUserId.equals(targetUser.getId()))
+        if ((authUserId != null && authUserId.equals(targetUserEntity.getId()))
                 || isAdmin(authUserRoleList)
                 || isManager(authUserRoleList)) {
             return;
@@ -86,19 +89,19 @@ public class UserServiceV1 {
         throw new UserException(UserError.USER_BAD_REQUEST);
     }
 
-    private User getUserOrThrow(UUID userId) {
+    private UserEntity getUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserError.USER_CAN_NOT_FOUND));
     }
 
     private boolean isAdmin(List<String> authUserRoleList) {
         return !CollectionUtils.isEmpty(authUserRoleList)
-                && authUserRoleList.contains(UserRole.Role.ADMIN.toString());
+                && authUserRoleList.contains(UserRoleEntity.Role.ADMIN.toString());
     }
 
     private boolean isManager(List<String> authUserRoleList) {
         return !CollectionUtils.isEmpty(authUserRoleList)
-                && authUserRoleList.contains(UserRole.Role.MANAGER.toString());
+                && authUserRoleList.contains(UserRoleEntity.Role.MANAGER.toString());
     }
 
     private String normalize(String value) {
@@ -107,6 +110,16 @@ public class UserServiceV1 {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Pageable applyDefaultSort(Pageable pageable) {
+        if (pageable == null || pageable.isUnpaged()) {
+            return Pageable.unpaged();
+        }
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
 }

@@ -12,7 +12,7 @@ import com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper;
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.example.shop.order.application.service.OrderServiceV1;
-import com.example.shop.order.domain.vo.OrderPayment;
+import com.example.shop.order.domain.entity.OrderEntity;
 import com.example.shop.order.infrastructure.security.auth.CustomUserDetails;
 import com.example.shop.order.infrastructure.security.jwt.JwtProperties;
 import com.example.shop.order.presentation.dto.request.ReqPostInternalOrderCompleteDtoV1;
@@ -97,10 +97,10 @@ class InternalOrderControllerV1Test {
 
         ReqPostInternalOrderCompleteDtoV1 request = ReqPostInternalOrderCompleteDtoV1.builder()
                 .payment(
-                        ReqPostInternalOrderCompleteDtoV1.PaymentDto.builder()
-                                .paymentId(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
-                                .amount(150_000L)
-                                .method(OrderPayment.Method.CARD)
+                                ReqPostInternalOrderCompleteDtoV1.PaymentDto.builder()
+                                        .paymentId(UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
+                                        .amount(150_000L)
+                                        .method(OrderEntity.OrderPaymentMethod.CARD)
                                 .build()
                 )
                 .build();

@@ -4,10 +4,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.example.shop.user.domain.model.User;
-import com.example.shop.user.domain.model.UserRole;
-import com.example.shop.user.domain.repository.UserRepository;
 import com.example.shop.user.application.cache.AuthCache;
+import com.example.shop.user.domain.entity.UserEntity;
+import com.example.shop.user.domain.entity.UserRoleEntity;
+import com.example.shop.user.domain.repository.UserRepository;
 import com.example.shop.user.infrastructure.security.jwt.JwtProperties;
 import com.example.shop.user.infrastructure.security.jwt.JwtTokenGenerator;
 import com.example.shop.user.presentation.advice.AuthError;
@@ -53,54 +53,54 @@ public class AuthServiceV1 {
                     throw new AuthException(AuthError.AUTH_USER_ALREADY_EXIST);
                 });
 
-        User newUser = User.builder()
+        UserEntity newUserEntity = UserEntity.builder()
                 .username(requestUser.getUsername())
                 .password(passwordEncoder.encode(requestUser.getPassword()))
                 .nickname(requestUser.getNickname())
                 .email(requestUser.getEmail())
                 .jwtValidator(0L)
                 .userRoleList(List.of(
-                        UserRole.builder()
-                                .role(UserRole.Role.USER)
+                        UserRoleEntity.builder()
+                                .role(UserRoleEntity.Role.USER)
                                 .build()
                 ))
                 .userSocialList(List.of())
                 .build();
-        userRepository.save(newUser);
+        userRepository.save(newUserEntity);
     }
 
     public ResPostAuthLoginDtoV1 login(ReqPostAuthLoginDtoV1 reqDto) {
         ReqPostAuthLoginDtoV1.UserDto requestUser = reqDto.getUser();
-        User user = userRepository.findByUsername(requestUser.getUsername())
+        UserEntity userEntity = userRepository.findByUsername(requestUser.getUsername())
                 .orElseThrow(() -> new AuthException(AuthError.AUTH_USERNAME_NOT_EXIST));
 
-        if (!passwordEncoder.matches(requestUser.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(requestUser.getPassword(), userEntity.getPassword())) {
             throw new AuthException(AuthError.AUTH_PASSWORD_NOT_MATCHED);
         }
 
         return ResPostAuthLoginDtoV1.of(
-                jwtTokenGenerator.generateAccessToken(user),
-                jwtTokenGenerator.generateRefreshToken(user)
+                jwtTokenGenerator.generateAccessToken(userEntity),
+                jwtTokenGenerator.generateRefreshToken(userEntity)
         );
     }
 
     public ResPostAuthRefreshDtoV1 refresh(ReqPostAuthRefreshDtoV1 reqDto) {
         DecodedJWT decodedRefreshJwt = verifyToken(reqDto.getRefreshJwt(), jwtProperties.getRefreshSubject());
         UUID userId = parseUserId(decodedRefreshJwt);
-        User user = userRepository.findById(userId)
+        UserEntity userEntity = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthError.AUTH_USER_CAN_NOT_FOUND));
 
         Instant issuedAt = decodedRefreshJwt.getIssuedAtAsInstant();
         if (issuedAt == null) {
             throw new AuthException(AuthError.AUTH_TOKEN_INVALID);
         }
-        if (user.getJwtValidator() != null && user.getJwtValidator() > issuedAt.toEpochMilli()) {
+        if (userEntity.getJwtValidator() != null && userEntity.getJwtValidator() > issuedAt.toEpochMilli()) {
             throw new AuthException(AuthError.AUTH_TOKEN_INVALID);
         }
 
         return ResPostAuthRefreshDtoV1.of(
-                jwtTokenGenerator.generateAccessToken(user),
-                jwtTokenGenerator.generateRefreshToken(user)
+                jwtTokenGenerator.generateAccessToken(userEntity),
+                jwtTokenGenerator.generateRefreshToken(userEntity)
         );
     }
 
@@ -132,14 +132,14 @@ public class AuthServiceV1 {
             valid = false;
             remainingSeconds = 0;
         } else {
-            User user = userRepository.findById(userId)
+            UserEntity userEntity = userRepository.findById(userId)
                     .orElse(null);
-            if (user == null) {
+            if (userEntity == null) {
                 valid = false;
                 remainingSeconds = 0;
-            } else if (user.getJwtValidator() != null
+            } else if (userEntity.getJwtValidator() != null
                     && decodedAccessJwt.getIssuedAtAsInstant() != null
-                    && user.getJwtValidator() > decodedAccessJwt.getIssuedAtAsInstant().getEpochSecond()) {
+                    && userEntity.getJwtValidator() > decodedAccessJwt.getIssuedAtAsInstant().getEpochSecond()) {
                 valid = false;
                 remainingSeconds = 0;
             }
@@ -154,23 +154,23 @@ public class AuthServiceV1 {
 
     public void invalidateBeforeToken(UUID authUserId, List<String> authRoleList, ReqPostAuthInvalidateBeforeTokenDtoV1 reqDto) {
         getAuthUserOrThrow(authUserId);
-        User targetUser = getUserOrThrow(reqDto.getUser().getId());
-        validateAccess(authUserId, authRoleList, targetUser);
+        UserEntity targetUserEntity = getUserOrThrow(reqDto.getUser().getId());
+        validateAccess(authUserId, authRoleList, targetUserEntity);
         long nowEpochSecond = Instant.now().getEpochSecond();
-        User updatedUser = targetUser.updateJwtValidator(nowEpochSecond);
-        authCache.denyBy(String.valueOf(updatedUser.getId()), nowEpochSecond);
-        userRepository.save(updatedUser);
+        UserEntity updatedUserEntity = targetUserEntity.updateJwtValidator(nowEpochSecond);
+        authCache.denyBy(String.valueOf(updatedUserEntity.getId()), nowEpochSecond);
+        userRepository.save(updatedUserEntity);
     }
 
-    private void validateAccess(UUID authUserId, List<String> authUserRoleList, User targetUser) {
-        boolean targetIsAdmin = targetUser.getUserRoleList().stream()
-                .map(UserRole::getRole)
-                .anyMatch(role -> role == UserRole.Role.ADMIN);
+    private void validateAccess(UUID authUserId, List<String> authUserRoleList, UserEntity targetUserEntity) {
+        boolean targetIsAdmin = targetUserEntity.getUserRoleList().stream()
+                .map(UserRoleEntity::getRole)
+                .anyMatch(role -> role == UserRoleEntity.Role.ADMIN);
         if (targetIsAdmin && !isAdmin(authUserRoleList)) {
             throw new UserException(UserError.USER_BAD_REQUEST);
         }
 
-        if ((authUserId != null && authUserId.equals(targetUser.getId()))
+        if ((authUserId != null && authUserId.equals(targetUserEntity.getId()))
                 || isAdmin(authUserRoleList)
                 || isManager(authUserRoleList)) {
             return;
@@ -178,24 +178,24 @@ public class AuthServiceV1 {
         throw new UserException(UserError.USER_BAD_REQUEST);
     }
 
-    private User getAuthUserOrThrow(UUID userId) {
+    private UserEntity getAuthUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserError.USER_BAD_REQUEST));
     }
 
-    private User getUserOrThrow(UUID userId) {
+    private UserEntity getUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserError.USER_CAN_NOT_FOUND));
     }
 
     private boolean isAdmin(List<String> authUserRoleList) {
         return !CollectionUtils.isEmpty(authUserRoleList)
-                && authUserRoleList.contains(UserRole.Role.ADMIN.toString());
+                && authUserRoleList.contains(UserRoleEntity.Role.ADMIN.toString());
     }
 
     private boolean isManager(List<String> authUserRoleList) {
         return !CollectionUtils.isEmpty(authUserRoleList)
-                && authUserRoleList.contains(UserRole.Role.MANAGER.toString());
+                && authUserRoleList.contains(UserRoleEntity.Role.MANAGER.toString());
     }
 
     private DecodedJWT verifyToken(String token, String subject) {

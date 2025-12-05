@@ -1,4 +1,4 @@
-package com.example.shop.user.infrastructure.jpa.entity;
+package com.example.shop.user.domain.entity;
 
 import com.example.shop.global.infrastructure.persistence.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,15 +25,23 @@ import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
-@Table(name = "USER_ROLE")
+@Table(
+        name = "USER_SOCIAL",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "UK_USER_SOCIAL_PROVIDER_ID",
+                        columnNames = {"provider", "provider_id"}
+                )
+        }
+)
 @DynamicInsert
 @DynamicUpdate
 @Getter
 @Builder
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(of = "id", callSuper = false)
-public class UserRoleEntity extends BaseEntity {
+public class UserSocialEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -44,19 +53,37 @@ public class UserRoleEntity extends BaseEntity {
     @Setter(AccessLevel.PACKAGE)
     private UserEntity user;
 
-    @Column(name = "role", nullable = false)
+    @Column(name = "provider", nullable = false)
     @Enumerated(EnumType.STRING)
-    private Role role;
+    private Provider provider;
 
-    public enum Role {
-        ADMIN,
-        MANAGER,
-        USER
+    @Column(name = "provider_id", nullable = false)
+    private String providerId;
+
+    @Column(name = "nickname")
+    private String nickname;
+
+    @Column(name = "email")
+    private String email;
+
+    public void update(Provider provider, String providerId, String nickname, String email) {
+        if (provider != null) {
+            this.provider = provider;
+        }
+        if (providerId != null) {
+            this.providerId = providerId;
+        }
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (email != null) {
+            this.email = email;
+        }
     }
 
-    public void updateRole(Role role) {
-        if (role != null) {
-            this.role = role;
-        }
+    public enum Provider {
+        KAKAO,
+        GOOGLE,
+        NAVER
     }
 }

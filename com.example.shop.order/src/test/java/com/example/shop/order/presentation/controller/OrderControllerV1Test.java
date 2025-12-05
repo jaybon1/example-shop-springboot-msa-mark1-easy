@@ -16,7 +16,7 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.SimpleType;
 import com.example.shop.order.application.service.OrderServiceV1;
-import com.example.shop.order.domain.model.Order;
+import com.example.shop.order.domain.entity.OrderEntity;
 import com.example.shop.order.infrastructure.security.auth.CustomUserDetails;
 import com.example.shop.order.presentation.dto.request.ReqPostOrdersDtoV1;
 import com.example.shop.order.presentation.dto.response.ResGetOrderDtoV1;
@@ -110,13 +110,13 @@ class OrderControllerV1Test {
                 .orderPage(new ResGetOrdersDtoV1.OrderPageDto(
                         ResGetOrdersDtoV1.OrderPageDto.OrderDto.builder()
                                 .id(UUID.randomUUID().toString())
-                                .status(Order.Status.CREATED)
+                                .status(OrderEntity.Status.CREATED)
                                 .totalAmount(10_000L)
                                 .createdAt(Instant.now())
                                 .build(),
                         ResGetOrdersDtoV1.OrderPageDto.OrderDto.builder()
                                 .id(UUID.randomUUID().toString())
-                                .status(Order.Status.PAID)
+                                .status(OrderEntity.Status.PAID)
                                 .totalAmount(20_000L)
                                 .createdAt(Instant.now())
                                 .build()

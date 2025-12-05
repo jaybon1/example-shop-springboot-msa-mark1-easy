@@ -1,8 +1,8 @@
 package com.example.shop.user.infrastructure.security.auth;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.example.shop.user.domain.model.User;
-import com.example.shop.user.domain.model.UserRole;
+import com.example.shop.user.domain.entity.UserEntity;
+import com.example.shop.user.domain.entity.UserRoleEntity;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -30,18 +30,18 @@ public class CustomUserDetails implements UserDetails {
     private String accessJwt;
     private List<String> roleList;
 
-    public static CustomUserDetails of(User user) {
-        List<String> roles = user.getUserRoleList()
+    public static CustomUserDetails of(UserEntity userEntity) {
+        List<String> roles = userEntity.getUserRoleList()
                 .stream()
-                .map(UserRole::getRole)
+                .map(UserRoleEntity::getRole)
                 .map(Enum::name)
                 .toList();
 
         return CustomUserDetails.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .email(user.getEmail())
+                .id(userEntity.getId())
+                .username(userEntity.getUsername())
+                .nickname(userEntity.getNickname())
+                .email(userEntity.getEmail())
                 .accessJwt(null)
                 .roleList(List.copyOf(roles))
                 .build();

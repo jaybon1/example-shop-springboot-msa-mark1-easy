@@ -1,19 +1,18 @@
 package com.example.shop.product.domain.repository;
 
-import com.example.shop.product.domain.model.ProductStock;
-import com.example.shop.product.domain.model.ProductStock.ProductStockType;
+import com.example.shop.product.domain.entity.ProductStockEntity;
+import com.example.shop.product.domain.entity.ProductStockEntity.ProductStockType;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ProductStockRepository {
-
-    ProductStock save(ProductStock productStock);
+public interface ProductStockRepository extends JpaRepository<ProductStockEntity, UUID> {
 
     boolean existsByProductIdAndOrderIdAndType(UUID productId, UUID orderId, ProductStockType type);
 
-    List<ProductStock> findByOrderId(UUID orderId);
+    List<ProductStockEntity> findByOrderId(UUID orderId);
 
     boolean existsByOrderIdAndType(UUID orderId, ProductStockType type);
 
-    List<ProductStock> findByIdIn(List<UUID> productStockIdList);
+    List<ProductStockEntity> findByIdIn(List<UUID> productStockIdList);
 }

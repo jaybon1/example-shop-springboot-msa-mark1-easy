@@ -1,4 +1,4 @@
-package com.example.shop.payment.infrastructure.jpa.entity;
+package com.example.shop.payment.domain.entity;
 
 import com.example.shop.global.infrastructure.persistence.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -24,8 +23,6 @@ import org.hibernate.annotations.DynamicUpdate;
 @DynamicInsert
 @DynamicUpdate
 @Getter
-@Builder
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(of = "id", callSuper = false)
 public class PaymentEntity extends BaseEntity {
@@ -41,24 +38,51 @@ public class PaymentEntity extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status = Status.COMPLETED;
+    private Status status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "method", nullable = false)
     private Method method;
 
-    @Builder.Default
     @Column(name = "amount", nullable = false)
-    private Long amount = 0L;
+    private Long amount;
 
     @Column(name = "transaction_key")
     private String transactionKey;
 
-    public void updateStatus(Status status) {
-        this.status = status;
+    @Builder
+    private PaymentEntity(
+            UUID id,
+            UUID orderId,
+            UUID userId,
+            Status status,
+            Method method,
+            Long amount,
+            String transactionKey
+    ) {
+        this.id = id;
+        this.orderId = orderId;
+        this.userId = userId;
+        this.status = status != null ? status : Status.COMPLETED;
+        this.method = method;
+        this.amount = amount != null ? amount : 0L;
+        this.transactionKey = transactionKey;
+    }
+
+    public PaymentEntity markCompleted() {
+        this.status = Status.COMPLETED;
+        return this;
+    }
+
+    public PaymentEntity markCancelled() {
+        this.status = Status.CANCELLED;
+        return this;
+    }
+
+    public boolean isOwnedBy(UUID targetUserId) {
+        return targetUserId != null && targetUserId.equals(this.userId);
     }
 
     public void updateDetails(Method method, Long amount, String transactionKey) {

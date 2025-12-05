@@ -1,8 +1,8 @@
 package com.example.shop.product.application.service;
 
-import com.example.shop.product.domain.model.Product;
-import com.example.shop.product.domain.model.ProductStock;
-import com.example.shop.product.domain.model.ProductStock.ProductStockType;
+import com.example.shop.product.domain.entity.ProductEntity;
+import com.example.shop.product.domain.entity.ProductStockEntity;
+import com.example.shop.product.domain.entity.ProductStockEntity.ProductStockType;
 import com.example.shop.product.domain.repository.ProductRepository;
 import com.example.shop.product.domain.repository.ProductStockRepository;
 import com.example.shop.product.presentation.advice.ProductError;
@@ -40,10 +40,10 @@ public class ProductServiceV1 {
 
     public ResGetProductsDtoV1 getProducts(Pageable pageable, String name) {
         String normalizedName = normalize(name);
-        Page<Product> productPage = normalizedName == null
+        Page<ProductEntity> productEntityPage = normalizedName == null
                 ? productRepository.findAll(pageable)
                 : productRepository.findByNameContainingIgnoreCase(normalizedName, pageable);
-        return ResGetProductsDtoV1.of(productPage);
+        return ResGetProductsDtoV1.of(productEntityPage);
     }
 
     @Cacheable(cacheNames = PRODUCT_CACHE_NAME, key = "#productId")
@@ -59,13 +59,13 @@ public class ProductServiceV1 {
             throw new ProductException(ProductError.PRODUCT_BAD_REQUEST);
         }
         validateDuplicatedName(normalizedName, Optional.empty());
-        Product newProduct = Product.builder()
+        ProductEntity newProductEntity = ProductEntity.builder()
                 .name(normalizedName)
                 .price(reqProduct.getPrice())
                 .stock(reqProduct.getStock())
                 .build();
-        Product savedProduct = productRepository.save(newProduct);
-        return ResPostProductsDtoV1.of(savedProduct);
+        ProductEntity savedProductEntity = productRepository.save(newProductEntity);
+        return ResPostProductsDtoV1.of(savedProductEntity);
     }
 
     @Transactional
@@ -78,22 +78,22 @@ public class ProductServiceV1 {
                 .map(ReqPostInternalProductsReleaseStockDtoV1.ProductStockDto::getProductId)
                 .toList();
 
-        List<Product> productList = productRepository.findByIdIn(productIds);
+        List<ProductEntity> productEntityList = productRepository.findByIdIn(productIds);
 
         reqDto.getProductStocks().forEach(productStockDto -> {
-            productList.stream().filter(product -> product.getId().equals(productStockDto.getProductId())).findFirst()
-                    .ifPresent(product -> {
-                        if (product.getStock() < productStockDto.getQuantity()) {
+            productEntityList.stream().filter(productEntity -> productEntity.getId().equals(productStockDto.getProductId())).findFirst()
+                    .ifPresent(productEntity -> {
+                        if (productEntity.getStock() < productStockDto.getQuantity()) {
                             throw new ProductException(ProductError.PRODUCT_BAD_REQUEST);
                         }
-                        Product updatedProduct = product.update(null, null, product.getStock() - productStockDto.getQuantity());
-                        productRepository.save(updatedProduct);
+                        ProductEntity updatedProductEntity = productEntity.update(null, null, productEntity.getStock() - productStockDto.getQuantity());
+                        productRepository.save(updatedProductEntity);
                     });
         });
 
         reqDto.getProductStocks().forEach(productStockDto ->
                 productStockRepository.save(
-                        ProductStock.builder()
+                        ProductStockEntity.builder()
                                 .productId(productStockDto.getProductId())
                                 .orderId(reqDto.getOrder().getOrderId())
                                 .quantity(productStockDto.getQuantity())
@@ -111,27 +111,27 @@ public class ProductServiceV1 {
             throw new ProductException(ProductError.PRODUCT_BAD_REQUEST);
         }
 
-        List<ProductStock> productStockList = productStockRepository.findByOrderId(reqDto.getOrder().getOrderId());
-        List<UUID> productIds = productStockList.stream()
-                .map(ProductStock::getProductId)
+        List<ProductStockEntity> productStockEntityList = productStockRepository.findByOrderId(reqDto.getOrder().getOrderId());
+        List<UUID> productIds = productStockEntityList.stream()
+                .map(ProductStockEntity::getProductId)
                 .toList();
 
-        List<Product> productList = productRepository.findByIdIn(productIds);
+        List<ProductEntity> productEntityList = productRepository.findByIdIn(productIds);
 
-        productStockList.forEach(productStock -> {
-            productList.stream().filter(product -> product.getId().equals(productStock.getProductId())).findFirst()
-                    .ifPresent(product -> {
-                        Product updatedProduct = product.update(null, null, product.getStock() + productStock.getQuantity());
-                        productRepository.save(updatedProduct);
+        productStockEntityList.forEach(productStockEntity -> {
+            productEntityList.stream().filter(productEntity -> productEntity.getId().equals(productStockEntity.getProductId())).findFirst()
+                    .ifPresent(productEntity -> {
+                        ProductEntity updatedProductEntity = productEntity.update(null, null, productEntity.getStock() + productStockEntity.getQuantity());
+                        productRepository.save(updatedProductEntity);
                     });
         });
 
-        productStockList.forEach(productStock ->
+        productStockEntityList.forEach(productStockEntity ->
                 productStockRepository.save(
-                        ProductStock.builder()
-                                .productId(productStock.getProductId())
+                        ProductStockEntity.builder()
+                                .productId(productStockEntity.getProductId())
                                 .orderId(reqDto.getOrder().getOrderId())
-                                .quantity(productStock.getQuantity())
+                                .quantity(productStockEntity.getQuantity())
                                 .type(ProductStockType.RETURN)
                                 .build()
                 )
@@ -150,8 +150,8 @@ public class ProductServiceV1 {
 
     private void validateDuplicatedName(String name, Optional<UUID> excludeId) {
         productRepository.findByName(name)
-                .ifPresent(product -> {
-                    if (excludeId.isEmpty() || !product.getId().equals(excludeId.get())) {
+                .ifPresent(productEntity -> {
+                    if (excludeId.isEmpty() || !productEntity.getId().equals(excludeId.get())) {
                         throw new ProductException(ProductError.PRODUCT_NAME_DUPLICATED);
                     }
                 });
@@ -165,7 +165,7 @@ public class ProductServiceV1 {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private Product findProductById(UUID productId) {
+    private ProductEntity findProductById(UUID productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new ProductException(ProductError.PRODUCT_CAN_NOT_FOUND));
     }

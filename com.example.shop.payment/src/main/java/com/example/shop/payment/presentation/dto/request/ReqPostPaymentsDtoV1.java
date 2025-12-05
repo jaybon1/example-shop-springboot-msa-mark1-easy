@@ -1,9 +1,8 @@
 package com.example.shop.payment.presentation.dto.request;
 
-import com.example.shop.payment.domain.model.Payment;
+import com.example.shop.payment.domain.entity.PaymentEntity;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -29,7 +28,7 @@ public class ReqPostPaymentsDtoV1 {
         private UUID orderId;
 
         @NotNull(message = "결제 수단을 입력해주세요.")
-        private Payment.Method method;
+        private PaymentEntity.Method method;
 
         @NotNull(message = "결제 금액을 입력해주세요.")
         @Min(value = 0, message = "결제 금액은 0 이상이어야 합니다.")

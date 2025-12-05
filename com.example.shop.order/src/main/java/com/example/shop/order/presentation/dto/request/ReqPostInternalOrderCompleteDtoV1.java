@@ -1,6 +1,6 @@
 package com.example.shop.order.presentation.dto.request;
 
-import com.example.shop.order.domain.vo.OrderPayment;
+import com.example.shop.order.domain.entity.OrderEntity;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -34,6 +34,6 @@ public class ReqPostInternalOrderCompleteDtoV1 {
         private Long amount;
 
         @NotNull(message = "결제 수단을 입력해주세요.")
-        private OrderPayment.Method method;
+        private OrderEntity.OrderPaymentMethod method;
     }
 }

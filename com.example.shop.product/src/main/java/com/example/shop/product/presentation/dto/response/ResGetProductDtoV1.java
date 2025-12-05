@@ -1,6 +1,6 @@
 package com.example.shop.product.presentation.dto.response;
 
-import com.example.shop.product.domain.model.Product;
+import com.example.shop.product.domain.entity.ProductEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,9 +12,9 @@ public class ResGetProductDtoV1 {
 
     private final ProductDto product;
 
-    public static ResGetProductDtoV1 of(Product product) {
+    public static ResGetProductDtoV1 of(ProductEntity productEntity) {
         return ResGetProductDtoV1.builder()
-                .product(ProductDto.from(product))
+                .product(ProductDto.from(productEntity))
                 .build();
     }
 
@@ -27,12 +27,12 @@ public class ResGetProductDtoV1 {
         private final Long price;
         private final Long stock;
 
-        public static ProductDto from(Product product) {
+        public static ProductDto from(ProductEntity productEntity) {
             return ProductDto.builder()
-                    .id(String.valueOf(product.getId()))
-                    .name(product.getName())
-                    .price(product.getPrice())
-                    .stock(product.getStock())
+                    .id(String.valueOf(productEntity.getId()))
+                    .name(productEntity.getName())
+                    .price(productEntity.getPrice())
+                    .stock(productEntity.getStock())
                     .build();
         }
     }

@@ -2,10 +2,11 @@ package com.example.shop.order.application.service;
 
 import com.example.shop.order.application.client.PaymentClientV1;
 import com.example.shop.order.application.client.ProductClientV1;
-import com.example.shop.order.domain.model.Order;
-import com.example.shop.order.domain.model.OrderItem;
+import com.example.shop.order.domain.entity.OrderEntity;
+import com.example.shop.order.domain.entity.OrderEntity.OrderPaymentMethod;
+import com.example.shop.order.domain.entity.OrderEntity.OrderPaymentStatus;
+import com.example.shop.order.domain.entity.OrderItemEntity;
 import com.example.shop.order.domain.repository.OrderRepository;
-import com.example.shop.order.domain.vo.OrderPayment;
 import com.example.shop.order.infrastructure.resttemplate.product.dto.request.ReqPostInternalProductsReleaseStockDtoV1;
 import com.example.shop.order.infrastructure.resttemplate.product.dto.request.ReqPostInternalProductsReturnStockDtoV1;
 import com.example.shop.order.infrastructure.resttemplate.product.dto.response.ResGetProductDtoV1;
@@ -23,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,19 +41,19 @@ public class OrderServiceV1 {
             throw new OrderException(OrderError.ORDER_BAD_REQUEST);
         }
 
-        Page<Order> orderPage;
+        Page<OrderEntity> orderEntityPage;
         if (hasManagerPermission(authUserRoleList)) {
-            orderPage = orderRepository.findAll(pageable);
+            orderEntityPage = orderRepository.findAll(pageable);
         } else {
-            orderPage = orderRepository.findByUserId(authUserId, pageable);
+            orderEntityPage = orderRepository.findByUserId(authUserId, pageable);
         }
-        return ResGetOrdersDtoV1.of(orderPage);
+        return ResGetOrdersDtoV1.of(orderEntityPage);
     }
 
     public ResGetOrderDtoV1 getOrder(UUID authUserId, List<String> authUserRoleList, UUID orderId) {
-        Order order = findOrder(orderId);
-        validateAccessPermission(order, authUserId, authUserRoleList);
-        return ResGetOrderDtoV1.of(order);
+        OrderEntity orderEntity = findOrder(orderId);
+        validateAccessPermission(orderEntity, authUserId, authUserRoleList);
+        return ResGetOrderDtoV1.of(orderEntity);
     }
 
     @Transactional
@@ -65,7 +65,7 @@ public class OrderServiceV1 {
         ) {
             throw new OrderException(OrderError.ORDER_PRODUCT_DUPLICATED);
         }
-        List<OrderItem> orderItemList = new ArrayList<>();
+        List<OrderItemEntity> orderItemEntityList = new ArrayList<>();
         Map<UUID, Long> productQuantityMap = new LinkedHashMap<>();
         long totalAmount = 0L;
         for (ReqPostOrdersDtoV1.OrderDto.OrderItemDto itemDto : reqOrder.getOrderItemList()) {
@@ -89,50 +89,47 @@ public class OrderServiceV1 {
                     : quantity;
             productQuantityMap.put(productId, aggregatedQuantity);
 
-            OrderItem orderItem = OrderItem.builder()
+            OrderItemEntity orderItemEntity = OrderItemEntity.builder()
                     .productId(productId)
                     .productName(product.getName())
                     .unitPrice(unitPrice)
                     .quantity(quantity)
                     .lineTotal(lineTotal)
                     .build();
-            orderItemList.add(orderItem);
+            orderItemEntityList.add(orderItemEntity);
         }
 
-        Order order = Order.builder()
+        OrderEntity orderEntity = OrderEntity.builder()
                 .userId(authUserId)
-                .status(Order.Status.CREATED)
+                .status(OrderEntity.Status.CREATED)
                 .totalAmount(totalAmount)
-                .orderItemList(List.copyOf(orderItemList))
-                .createdAt(Instant.now())
+                .orderItemList(List.copyOf(orderItemEntityList))
                 .build();
 
-        Order savedOrder = orderRepository.save(order);
+        OrderEntity savedOrderEntity = orderRepository.save(orderEntity);
         productClientV1.postInternalProductsReleaseStock(
-                buildReleaseStockRequest(savedOrder.getId(), productQuantityMap),
+                buildReleaseStockRequest(savedOrderEntity.getId(), productQuantityMap),
                 accessJwt
         );
-        return ResPostOrdersDtoV1.of(savedOrder);
+        return ResPostOrdersDtoV1.of(savedOrderEntity);
     }
 
     @Transactional
     public void postOrderCancel(UUID authUserId, List<String> authUserRoleList, String accessJwt, UUID orderId) {
-        Order order = findOrder(orderId);
-        validateAccessPermission(order, authUserId, authUserRoleList);
+        OrderEntity orderEntity = findOrder(orderId);
+        validateAccessPermission(orderEntity, authUserId, authUserRoleList);
 
-        if (Order.Status.CANCELLED.equals(order.getStatus())) {
+        if (OrderEntity.Status.CANCELLED.equals(orderEntity.getStatus())) {
             throw new OrderException(OrderError.ORDER_ALREADY_CANCELLED);
         }
 
-        OrderPayment orderPayment = order.getPayment();
-        if (orderPayment != null
-                && orderPayment.getId() != null
-                && OrderPayment.Status.COMPLETED.equals(orderPayment.getStatus())) {
-            paymentClientV1.postInternalPaymentsCancel(orderPayment.getId(), accessJwt);
+        if (orderEntity.getPaymentId() != null
+                && OrderPaymentStatus.COMPLETED.equals(orderEntity.getPaymentStatus())) {
+            paymentClientV1.postInternalPaymentsCancel(orderEntity.getPaymentId(), accessJwt);
         }
 
-        Order cancelledOrder = order.markCancelled();
-        orderRepository.save(cancelledOrder);
+        OrderEntity cancelledOrderEntity = orderEntity.markCancelled();
+        orderRepository.save(cancelledOrderEntity);
         productClientV1.postInternalProductsReturnStock(
                 buildReturnStockRequest(orderId),
                 accessJwt
@@ -145,12 +142,12 @@ public class OrderServiceV1 {
             throw new OrderException(OrderError.ORDER_BAD_REQUEST);
         }
 
-        Order order = findOrder(orderId);
+        OrderEntity orderEntity = findOrder(orderId);
 
-        if (Order.Status.CANCELLED.equals(order.getStatus())) {
+        if (OrderEntity.Status.CANCELLED.equals(orderEntity.getStatus())) {
             throw new OrderException(OrderError.ORDER_ALREADY_CANCELLED);
         }
-        if (Order.Status.PAID.equals(order.getStatus())) {
+        if (OrderEntity.Status.PAID.equals(orderEntity.getStatus())) {
             throw new OrderException(OrderError.ORDER_ALREADY_PAID);
         }
 
@@ -158,31 +155,29 @@ public class OrderServiceV1 {
         if (paymentDto.getPaymentId() == null || paymentDto.getMethod() == null) {
             throw new OrderException(OrderError.ORDER_BAD_REQUEST);
         }
-        if (paymentDto.getAmount() == null || !Objects.equals(order.getTotalAmount(), paymentDto.getAmount())) {
+        if (paymentDto.getAmount() == null || !Objects.equals(orderEntity.getTotalAmount(), paymentDto.getAmount())) {
             throw new OrderException(OrderError.ORDER_PAYMENT_AMOUNT_MISMATCH);
         }
 
-        OrderPayment orderPayment = OrderPayment.builder()
-                .id(paymentDto.getPaymentId())
-                .status(OrderPayment.Status.COMPLETED)
-                .method(paymentDto.getMethod())
-                .amount(paymentDto.getAmount())
-                .build();
-
-        Order completedOrder = order.markPaid(orderPayment);
-        orderRepository.save(completedOrder);
+        OrderEntity completedOrderEntity = orderEntity.markPaid(
+                paymentDto.getPaymentId(),
+                OrderPaymentStatus.COMPLETED,
+                paymentDto.getMethod(),
+                paymentDto.getAmount()
+        );
+        orderRepository.save(completedOrderEntity);
     }
 
-    private Order findOrder(UUID orderId) {
+    private OrderEntity findOrder(UUID orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderException(OrderError.ORDER_NOT_FOUND));
     }
 
-    private void validateAccessPermission(Order order, UUID authUserId, List<String> authUserRoleList) {
+    private void validateAccessPermission(OrderEntity orderEntity, UUID authUserId, List<String> authUserRoleList) {
         if (hasManagerPermission(authUserRoleList)) {
             return;
         }
-        if (!order.isOwnedBy(authUserId)) {
+        if (!orderEntity.isOwnedBy(authUserId)) {
             throw new OrderException(OrderError.ORDER_FORBIDDEN);
         }
     }

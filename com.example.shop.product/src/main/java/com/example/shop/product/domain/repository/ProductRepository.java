@@ -1,27 +1,18 @@
 package com.example.shop.product.domain.repository;
 
-import com.example.shop.product.domain.model.Product;
+import com.example.shop.product.domain.entity.ProductEntity;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ProductRepository {
+public interface ProductRepository extends JpaRepository<ProductEntity, UUID> {
 
-    Product save(Product product);
+    Optional<ProductEntity> findByName(String name);
 
-    Optional<Product> findById(UUID productId);
+    Page<ProductEntity> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
-    Optional<Product> findByName(String name);
-
-    Page<Product> findAll(Pageable pageable);
-
-    Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
-
-    List<Product> findAllById(Iterable<UUID> productIdList);
-
-    List<Product> findByIdIn(List<UUID> productIdList);
-
-    long count();
+    List<ProductEntity> findByIdIn(List<UUID> productIdList);
 }

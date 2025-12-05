@@ -1,7 +1,6 @@
 package com.example.shop.payment.presentation.dto.response;
 
-import com.example.shop.payment.domain.model.Payment;
-import java.time.Instant;
+import com.example.shop.payment.domain.entity.PaymentEntity;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,9 +10,9 @@ public class ResPostPaymentsDtoV1 {
 
     private final PaymentDto payment;
 
-    public static ResPostPaymentsDtoV1 of(Payment payment) {
+    public static ResPostPaymentsDtoV1 of(PaymentEntity paymentEntity) {
         return ResPostPaymentsDtoV1.builder()
-                .payment(PaymentDto.from(payment))
+                .payment(PaymentDto.from(paymentEntity))
                 .build();
     }
 
@@ -22,9 +21,9 @@ public class ResPostPaymentsDtoV1 {
     public static class PaymentDto {
         private final String id;
 
-        public static PaymentDto from(Payment payment) {
+        public static PaymentDto from(PaymentEntity paymentEntity) {
             return PaymentDto.builder()
-                    .id(String.valueOf(payment.getId()))
+                    .id(String.valueOf(paymentEntity.getId()))
                     .build();
         }
     }

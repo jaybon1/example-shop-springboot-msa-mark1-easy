@@ -1,7 +1,6 @@
 package com.example.shop.user.presentation.dto.response;
 
-import com.example.shop.user.domain.model.User;
-import lombok.AllArgsConstructor;
+import com.example.shop.user.domain.entity.UserEntity;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,9 +10,9 @@ public class ResGetUserDtoV1 {
 
     private final UserDto user;
 
-    public static ResGetUserDtoV1 of(User user) {
+    public static ResGetUserDtoV1 of(UserEntity userEntity) {
         return ResGetUserDtoV1.builder()
-                .user(UserDto.from(user))
+                .user(UserDto.from(userEntity))
                 .build();
     }
 
@@ -26,12 +25,12 @@ public class ResGetUserDtoV1 {
         private final String nickname;
         private final String email;
 
-        public static UserDto from(User user) {
+        public static UserDto from(UserEntity userEntity) {
             return UserDto.builder()
-                    .id(String.valueOf(user.getId()))
-                    .username(user.getUsername())
-                    .nickname(user.getNickname())
-                    .email(user.getEmail())
+                    .id(String.valueOf(userEntity.getId()))
+                    .username(userEntity.getUsername())
+                    .nickname(userEntity.getNickname())
+                    .email(userEntity.getEmail())
                     .build();
         }
 

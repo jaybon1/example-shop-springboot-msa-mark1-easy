@@ -1,6 +1,6 @@
 package com.example.shop.payment.infrastructure.resttemplate.order.dto.request;
 
-import com.example.shop.payment.domain.model.Payment;
+import com.example.shop.payment.domain.entity.PaymentEntity;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +17,6 @@ public class ReqPostInternalOrderCompleteDtoV1 {
 
         private final UUID paymentId;
         private final Long amount;
-        private final Payment.Method method;
+        private final PaymentEntity.Method method;
     }
 }

@@ -1,18 +1,12 @@
 package com.example.shop.order.domain.repository;
 
-import com.example.shop.order.domain.model.Order;
-import java.util.Optional;
+import com.example.shop.order.domain.entity.OrderEntity;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface OrderRepository {
+public interface OrderRepository extends JpaRepository<OrderEntity, UUID> {
 
-    Order save(Order order);
-
-    Optional<Order> findById(UUID orderId);
-
-    Page<Order> findAll(Pageable pageable);
-
-    Page<Order> findByUserId(UUID userId, Pageable pageable);
+    Page<OrderEntity> findByUserId(UUID userId, Pageable pageable);
 }

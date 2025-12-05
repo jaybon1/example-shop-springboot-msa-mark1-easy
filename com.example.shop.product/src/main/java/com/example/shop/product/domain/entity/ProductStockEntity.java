@@ -1,7 +1,6 @@
-package com.example.shop.product.infrastructure.jpa.entity;
+package com.example.shop.product.domain.entity;
 
 import com.example.shop.global.infrastructure.persistence.entity.BaseEntity;
-import com.example.shop.product.domain.model.ProductStock;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -35,8 +34,8 @@ import org.hibernate.annotations.DynamicUpdate;
 @DynamicUpdate
 @Getter
 @Builder
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(of = "id", callSuper = false)
 public class ProductStockEntity extends BaseEntity {
 
@@ -56,5 +55,10 @@ public class ProductStockEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 32)
-    private ProductStock.ProductStockType type;
+    private ProductStockType type;
+
+    public enum ProductStockType {
+        RELEASE,
+        RETURN
+    }
 }
